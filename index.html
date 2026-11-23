@@ -159,9 +159,15 @@
                 <div class="mb-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-semibold text-slate-700">Wie spreekt er nu?</span>
-                        <button type="button" id="btnToggleSpeakerEdit" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium">
-                            <i class="fa-solid fa-pen mr-1"></i> Namen aanpassen
-                        </button>
+                        <div class="flex items-center space-x-3">
+                            <label class="inline-flex items-center space-x-1.5 cursor-pointer select-none" title="Wisselt automatisch tussen Persoon 1, 2, 3... op basis van stemhoogte en spreekpauzes">
+                                <input type="checkbox" id="autoSpeakerToggle" checked class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">
+                                <span class="text-[11px] font-medium text-emerald-700"><i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i>Auto-stem</span>
+                            </label>
+                            <button type="button" id="btnToggleSpeakerEdit" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium">
+                                <i class="fa-solid fa-pen mr-1"></i> Namen aanpassen
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Bewerken van sprekersnamen -->
@@ -314,6 +320,15 @@
         let manualTasks = [];
         let speakers = ['Persoon 1', 'Persoon 2', 'Persoon 3', 'Persoon 4'];
         let activeSpeaker = null;
+
+        // Variabelen voor automatische stemherkenning (Web Audio API pitch-detectie)
+        let audioContext = null;
+        let analyserNode = null;
+        let micStream = null;
+        let pitchInterval = null;
+        let currentSegmentPitches = [];
+        let voiceProfiles = []; // [{ label: 'Persoon 1', avgPitch: 135 }, ...]
+        let lastSpeechTimestamp = 0;
 
         // --- INITIALISATIE BIJ LADEN PAGINA ---
         function bindEvents() {
@@ -516,10 +531,33 @@
                 let interim = '';
                 const textarea = document.getElementById('rawTranscript');
                 let baseText = textarea.value;
+                const autoEnabled = document.getElementById('autoSpeakerToggle')?.checked;
 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const transcriptPiece = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
+                        // Automatische spreker-toekenning bij spreekpauze (> 1,1 sec) of start van gesprek
+                        if (autoEnabled && currentSegmentPitches.length > 0) {
+                            const now = Date.now();
+                            const pauseDuration = now - lastSpeechTimestamp;
+                            if (!activeSpeaker || pauseDuration > 1100) {
+                                const detectedLabel = classifySpeakerByVoice(currentSegmentPitches);
+                                if (detectedLabel && detectedLabel !== activeSpeaker) {
+                                    activeSpeaker = detectedLabel;
+                                    renderSpeakerButtons();
+                                    const prefix = baseText.trim().length > 0 ? '\n\n' : '';
+                                    baseText += prefix + activeSpeaker + ': ';
+                                }
+                            }
+                            lastSpeechTimestamp = now;
+                            currentSegmentPitches = [];
+                        } else if (!activeSpeaker && baseText.trim().length === 0) {
+                            // Zorg dat het eerste blok altijd met Persoon 1 (of eerste naam) begint
+                            activeSpeaker = speakers[0] || 'Persoon 1';
+                            renderSpeakerButtons();
+                            baseText += activeSpeaker + ': ';
+                        }
+
                         const needsSpace = baseText.length > 0 && !baseText.endsWith(' ') && !baseText.endsWith('\n');
                         baseText += (needsSpace ? ' ' : '') + transcriptPiece.trim();
                         textarea.value = baseText;
@@ -576,12 +614,13 @@
             try {
                 isRecording = true;
                 recognition.start();
+                startVoiceAnalyzer();
                 document.getElementById('recordBtn').classList.replace('bg-red-600', 'bg-slate-800');
                 document.getElementById('recordBtn').classList.replace('hover:bg-red-700', 'hover:bg-slate-900');
                 document.getElementById('recordIcon').className = 'fa-solid fa-stop';
                 document.getElementById('recordBtnText').textContent = 'Stop Opname';
                 document.getElementById('recordingPulse').classList.remove('hidden');
-                document.getElementById('recordingStatus').textContent = 'Aan het luisteren (Nederlands)...';
+                document.getElementById('recordingStatus').textContent = 'Aan het luisteren (auto-stem actief)...';
                 loadAudioDevices(false);
             } catch (err) {
                 isRecording = false;
@@ -591,6 +630,7 @@
 
         function stopRecording() {
             isRecording = false;
+            stopVoiceAnalyzer();
             if (recognition) {
                 try {
                     recognition.stop();
@@ -603,6 +643,113 @@
             document.getElementById('recordingPulse').classList.add('hidden');
             document.getElementById('recordingStatus').textContent = 'Opname gepauzeerd';
             document.getElementById('interimBox').classList.add('hidden');
+        }
+
+        // --- AUTOMATISCHE STEMHOOGTE-ANALYSE (PERSOON 1, 2, 3...) ---
+        async function startVoiceAnalyzer() {
+            try {
+                const selectedDeviceId = document.getElementById('micSelect')?.value;
+                const constraints = {
+                    audio: selectedDeviceId && selectedDeviceId !== 'default'
+                        ? { deviceId: { exact: selectedDeviceId } }
+                        : true
+                };
+                micStream = await navigator.mediaDevices.getUserMedia(constraints);
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(micStream);
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 2048;
+                source.connect(analyserNode);
+
+                const buffer = new Float32Array(analyserNode.fftSize);
+                pitchInterval = setInterval(() => {
+                    if (!analyserNode || !isRecording) return;
+                    analyserNode.getFloatTimeDomainData(buffer);
+                    const pitch = detectFundamentalPitch(buffer, audioContext.sampleRate);
+                    // Menselijke spraak ligt doorgaans tussen 75 Hz (lage mannenstem) en 310 Hz (hoge vrouwenstem)
+                    if (pitch >= 75 && pitch <= 310) {
+                        currentSegmentPitches.push(pitch);
+                        if (currentSegmentPitches.length > 40) currentSegmentPitches.shift();
+                    }
+                }, 90);
+            } catch (err) {
+                console.warn('Stemhoogte-analyse niet gestart:', err);
+            }
+        }
+
+        function stopVoiceAnalyzer() {
+            if (pitchInterval) {
+                clearInterval(pitchInterval);
+                pitchInterval = null;
+            }
+            if (micStream) {
+                micStream.getTracks().forEach(t => t.stop());
+                micStream = null;
+            }
+            if (audioContext) {
+                audioContext.close().catch(() => {});
+                audioContext = null;
+            }
+            analyserNode = null;
+        }
+
+        function detectFundamentalPitch(buf, sampleRate) {
+            // Bereken geluidsniveau (RMS) om stilte / achtergrondruis te negeren
+            let rms = 0;
+            for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+            rms = Math.sqrt(rms / buf.length);
+            if (rms < 0.015) return -1;
+
+            // Autocorrelatie voor grondfrequentie (Hz)
+            let bestOffset = -1;
+            let bestCorrelation = 0;
+            const minSamples = Math.floor(sampleRate / 320);
+            const maxSamples = Math.floor(sampleRate / 70);
+
+            for (let offset = minSamples; offset <= maxSamples; offset++) {
+                let correlation = 0;
+                for (let i = 0; i < buf.length - offset; i++) {
+                    correlation += buf[i] * buf[i + offset];
+                }
+                if (correlation > bestCorrelation) {
+                    bestCorrelation = correlation;
+                    bestOffset = offset;
+                }
+            }
+            return bestOffset > 0 ? sampleRate / bestOffset : -1;
+        }
+
+        function classifySpeakerByVoice(pitches) {
+            if (!pitches || pitches.length === 0) return activeSpeaker || speakers[0] || 'Persoon 1';
+            // Gebruik de mediaan van de gemeten toonhoogtes om uitschieters te filteren
+            const sorted = [...pitches].sort((a, b) => a - b);
+            const medianPitch = sorted[Math.floor(sorted.length / 2)];
+
+            // Zoek bestaande stem binnen een bandbreedte van ±24 Hz
+            let closestProfile = null;
+            let smallestDiff = Infinity;
+            for (const profile of voiceProfiles) {
+                const diff = Math.abs(profile.avgPitch - medianPitch);
+                if (diff < smallestDiff) {
+                    smallestDiff = diff;
+                    closestProfile = profile;
+                }
+            }
+
+            if (closestProfile && smallestDiff <= 24) {
+                // Werk het stemprofiel licht bij (voortschrijdend gemiddelde)
+                closestProfile.avgPitch = (closestProfile.avgPitch * 0.75) + (medianPitch * 0.25);
+                return closestProfile.label;
+            }
+
+            // Nieuwe spreker aanmaken: gebruik ingevulde naam of automatisch "Persoon 1", "Persoon 2", ...
+            const nextIndex = voiceProfiles.length;
+            const newLabel = speakers[nextIndex] || ('Persoon ' + (nextIndex + 1));
+            if (!speakers.includes(newLabel)) {
+                speakers.push(newLabel);
+            }
+            voiceProfiles.push({ label: newLabel, avgPitch: medianPitch });
+            return newLabel;
         }
 
         // --- GEMINI OPDRACHT SAMENSTELLEN & KOPIËREN ---
@@ -812,6 +959,9 @@
             latestPromptText = '';
             manualTasks = [];
             activeSpeaker = null;
+            voiceProfiles = [];
+            currentSegmentPitches = [];
+            lastSpeechTimestamp = 0;
             renderSpeakerButtons();
             renderTasks();
             updateWordCount();
