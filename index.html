@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slimme Vergader-Notulist</title>
+    <!-- Tailwind CSS voor moderne, responsieve styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome voor iconen -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Subtiele scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Navigatiebalk -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+                    <i class="fa-solid fa-microphone-lines text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">Slimme Vergader-Notulist</h1>
+                    <p class="text-[11px] sm:text-xs text-slate-500 hidden sm:block">Spraak-naar-tekst & Gemini Notuleer-Assistent</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button type="button" id="btnGemConfig" class="inline-flex items-center text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium py-2 px-3 rounded-lg transition" title="Stel de link naar jullie eigen TOF Vergader-Notulist Gem in">
+                    <i class="fa-solid fa-gem mr-1.5 text-emerald-600"></i> <span id="gemBadgeText">Gem Koppelen</span>
+                </button>
+                <button type="button" id="btnHelp" class="text-xs sm:text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium py-2 px-3 rounded-lg transition" title="Uitleg voor collega's">
+                    <i class="fa-solid fa-circle-question mr-1"></i> Hulp
+                </button>
+                <button type="button" id="btnSample" class="hidden md:inline-flex items-center text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-lg transition" title="Laad een voorbeeldgesprek om te testen">
+                    <i class="fa-solid fa-vial mr-1.5 text-indigo-600"></i> Test-tekst
+                </button>
+                <button type="button" id="btnClear" class="text-xs sm:text-sm bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 px-3 rounded-lg transition" title="Wis alles">
+                    <i class="fa-solid fa-trash-can sm:mr-1"></i> <span class="hidden sm:inline">Wissen</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notificatie balk (vervangt alert) -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-3 text-sm font-medium">
+            <i id="toastIcon" class="fa-solid fa-circle-info text-indigo-400"></i>
+            <span id="toastMessage">Melding</span>
+        </div>
+    </div>
+
+    <!-- Modal: Hulp & Uitleg voor collega's -->
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-slate-900"><i class="fa-solid fa-book-open text-indigo-600 mr-2"></i>Snelstart voor Collega's</h3>
+                <button type="button" id="btnCloseHelpX" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="text-sm text-slate-600 space-y-3">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <p class="font-semibold text-slate-800 mb-1">1. Microfoon aansluiten (optioneel)</p>
+                    <p class="text-xs">Sluit een externe vergadermicrofoon aan via USB of Bluetooth en kies deze in het dropdown-menu boven de opnameknop.</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <p class="font-semibold text-slate-800 mb-1">2. Sprekers aan tafel bijhouden</p>
+                    <p class="text-xs">Vul de namen van de deelnemers in via <em>"Namen aanpassen"</em>. Klik tijdens het gesprek op de naam van degene die begint te praten, of laat mensen hun naam even noemen.</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <p class="font-semibold text-slate-800 mb-1">3. Notulen maken met jullie zakelijke Gemini / Gem</p>
+                    <p class="text-xs">Klik op <strong>"Kopieer voor Gemini & Open"</strong>. Het gesprek staat dan direct op je klembord en jullie TOF Gem opent. Plak de tekst (<strong>Ctrl+V</strong>) en druk op Enter!</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <p class="font-semibold text-slate-800 mb-1">4. Opslaan als echt Google Document in de juiste map</p>
+                    <p class="text-xs">Klik in Gemini rechtsboven in het Canvas-venster op het <strong>Kopieer-icoontje</strong>, open de gewenste map in je <strong>Google Drive</strong>, kies <strong>Nieuw &gt; Google Documenten</strong> en plak het verslag met <strong>Ctrl+V</strong>.</p>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end">
+                <button type="button" id="btnCloseHelpOk" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl">Begrepen!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Eigen Google Gem URL instellen -->
+    <div id="gemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-bold text-slate-900"><i class="fa-solid fa-gem text-indigo-600 mr-2"></i>Koppel jullie TOF Notulist-Gem</h3>
+                <button type="button" id="btnCloseGemX" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+                Heb je in jullie zakelijke Gemini een vaste <strong>TOF Vergader-Notulist Gem</strong> aangemaakt? Plak hieronder de webadres-link van die Gem. Dan hoeft alleen nog maar de gesprekstekst geplakt te worden!
+            </p>
+            <label for="gemUrlInput" class="block text-xs font-semibold text-slate-700 mb-1.5">URL van jullie Google Gem (optioneel)</label>
+            <input type="url" id="gemUrlInput" placeholder="https://gemini.google.com/gem/..." class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4">
+            <div class="flex justify-end space-x-2">
+                <button type="button" id="btnCancelGem" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl">Annuleren</button>
+                <button type="button" id="btnSaveGem" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hoofdgedeelte -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LINKERKOLOM: Opname, Sprekers & Ruwe Transcriptie (5 kolommen) -->
+        <div class="lg:col-span-5 flex flex-col space-y-4">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex-1 flex flex-col">
+                
+                <!-- Microfoon selectie & status -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="micSelect" class="text-xs font-semibold text-slate-700 flex items-center">
+                            <i class="fa-solid fa-headset mr-1.5 text-indigo-600"></i> Microfoon invoer
+                        </label>
+                        <button type="button" id="btnRefreshMic" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center" title="Vernieuw microfoonlijst">
+                            <i class="fa-solid fa-rotate mr-1"></i> Vernieuw lijst
+                        </button>
+                    </div>
+                    <select id="micSelect" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="default">Standaard systeemmicrofoon</option>
+                    </select>
+                </div>
+
+                <!-- Opnameknop -->
+                <div class="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 mb-4">
+                    <button type="button" id="recordBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-5 rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+                        <i id="recordIcon" class="fa-solid fa-microphone"></i>
+                        <span id="recordBtnText">Start Opname</span>
+                    </button>
+                    <div class="flex items-center space-x-2 mt-2.5 text-xs text-slate-500">
+                        <span id="recordingPulse" class="hidden w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                        <span id="recordingStatus">Klaar voor opname (of typ/plak tekst hieronder)</span>
+                    </div>
+                </div>
+
+                <!-- Sprekers snelknoppen -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-700">Wie spreekt er nu?</span>
+                        <div class="flex items-center space-x-3">
+                            <label class="inline-flex items-center space-x-1.5 cursor-pointer select-none" title="Wisselt automatisch tussen Persoon 1, 2, 3... op basis van stemhoogte en spreekpauzes">
+                                <input type="checkbox" id="autoSpeakerToggle" checked class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">
+                                <span class="text-[11px] font-medium text-emerald-700"><i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i>Auto-stem</span>
+                            </label>
+                            <button type="button" id="btnToggleSpeakerEdit" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium">
+                                <i class="fa-solid fa-pen mr-1"></i> Namen aanpassen
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bewerken van sprekersnamen -->
+                    <div id="speakerEditBox" class="hidden mb-2.5 p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-2">
+                        <label class="block text-[11px] font-medium text-indigo-900">Deelnemers (gescheiden door een komma):</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="speakerNamesInput" class="flex-1 text-xs bg-white border border-indigo-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Persoon 1, Persoon 2...">
+                            <button type="button" id="btnSaveSpeakers" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">Opslaan</button>
+                        </div>
+                    </div>
+
+                    <div id="speakerButtonsContainer" class="flex flex-wrap gap-1.5">
+                        <!-- Dynamische knoppen -->
+                    </div>
+                </div>
+
+                <!-- Tekstveld voor transcriptie -->
+                <div class="flex-1 flex flex-col min-h-[200px]">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="rawTranscript" class="text-xs font-semibold text-slate-700">Gesproken / getypte tekst</label>
+                        <span id="wordCount" class="text-[11px] font-medium text-slate-400">0 woorden</span>
+                    </div>
+                    <textarea id="rawTranscript" placeholder="Klik op 'Start Opname' om live te dicteren, of plak hier de ruwe tekst van jullie overleg..." class="flex-1 w-full p-3.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-none leading-relaxed"></textarea>
+
+                    <!-- Tijdelijke weergave van woorden die op dit moment worden uitgesproken -->
+                    <div id="interimBox" class="hidden mt-2 p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-700 italic">
+                        <i class="fa-solid fa-wave-square mr-1.5 animate-pulse"></i> <span id="interimText"></span>
+                    </div>
+                </div>
+
+                <!-- Genereer Knoppen (Kopieer prompt voor Gemini) -->
+                <div class="mt-4 space-y-2">
+                    <button type="button" id="generateBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 px-5 rounded-xl shadow-sm hover:shadow transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Kopieer voor Gemini & Open</span>
+                    </button>
+                    <button type="button" id="copyOnlyPromptBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-regular fa-copy"></i>
+                        <span>Alleen kopiëren naar klembord</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RECHTERKOLOM: Kant-en-klare Gemini Opdracht & Verslag (7 kolommen) -->
+        <div class="lg:col-span-7 flex flex-col">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex-1 flex flex-col overflow-hidden">
+                
+                <!-- Tabbladen & Actieknoppen -->
+                <div class="border-b border-slate-200 px-4 sm:px-6 pt-4 bg-slate-50/50 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex space-x-1 sm:space-x-2" role="tablist">
+                        <button type="button" id="tab-prompt" class="tab-btn px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl border-b-2 border-indigo-600 text-indigo-600 bg-white transition">
+                            <i class="fa-solid fa-sparkles mr-1.5"></i>Gemini Opdracht
+                        </button>
+                        <button type="button" id="tab-tasks" class="tab-btn px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium rounded-t-xl border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center">
+                            <i class="fa-solid fa-check-double mr-1.5"></i>Snelle Actiepunten
+                            <span id="taskBadge" class="ml-1.5 bg-slate-200 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center space-x-2 pb-2 sm:pb-0">
+                        <button type="button" id="copyBtn" class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium py-1.5 px-3 rounded-lg shadow-2xs transition flex items-center" title="Kopieer de tekst opnieuw">
+                            <i class="fa-regular fa-copy mr-1.5 text-slate-500"></i> Kopieer tekst
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content Gebied -->
+                <div class="p-5 sm:p-6 flex-1 overflow-y-auto relative min-h-[420px]">
+
+                    <!-- Lege beginstaat -->
+                    <div id="emptyState" class="h-full flex flex-col items-center justify-center text-center py-10 px-4">
+                        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+                            <i class="fa-solid fa-comments text-2xl"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800">Klaar voor jullie zakelijke Gemini</h3>
+                        <p class="text-sm text-slate-500 mt-1.5 max-w-md leading-relaxed">
+                            Spreek een gesprek in via de microfoon aan de linkerkant (of klik op <strong>Test-tekst</strong>) en klik daarna op <strong>Kopieer voor Gemini & Open</strong>.
+                        </p>
+                        <div class="mt-6 bg-emerald-50/80 border border-emerald-200 rounded-xl p-3.5 max-w-md text-left text-xs text-emerald-900 space-y-1">
+                            <p class="font-semibold"><i class="fa-solid fa-lock mr-1.5 text-emerald-600"></i>Waarom werkt dit zo veilig?</p>
+                            <p class="text-emerald-800">Omdat je de tekst zelf plakt in jullie zakelijke <strong>Google Workspace Gemini / Gem</strong>, blijft alle vergaderdata 100% binnen jullie eigen schoolomgeving.</p>
+                        </div>
+                    </div>
+
+                    <!-- TAB 1: Kant-en-klare Gemini Opdracht -->
+                    <div id="view-prompt" class="hidden space-y-4">
+                        <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-xl space-y-3">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex items-center space-x-2">
+                                    <span class="bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">Gekopieerd!</span>
+                                    <h3 class="text-sm font-bold text-indigo-950">Zo maak je direct een Google Document van je notulen:</h3>
+                                </div>
+                                <a id="openGeminiLink" href="https://gemini.google.com/gem/9f2bd71abf50" target="_blank" rel="noopener noreferrer" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5">
+                                    <span>Open TOF Gem</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
+                                </a>
+                            </div>
+
+                            <ol class="text-xs text-indigo-900 space-y-2 bg-white/80 border border-indigo-100 rounded-xl p-3.5 list-decimal list-inside leading-relaxed">
+                                <li><strong>Plakken in jullie Gem:</strong> Klik in het geopende Gem-venster in het tekstvak, druk op <strong>Ctrl+V</strong> (of Cmd+V op Mac) en druk op <strong>Enter</strong>.</li>
+                                <li><strong>Notulen kopiëren uit Canvas:</strong> De TOF Notulist zet het verslag direct in een documentvenster (Canvas). Klik daar rechtsboven op het <strong>Kopieer-icoontje</strong> (of selecteer alles en druk op <strong>Ctrl+C</strong>).</li>
+                                <li><strong>Opslaan in de juiste Drive-map:</strong> Open je eigen <strong>Google Drive</strong>, ga naar de gewenste team- of vergadermap, klik op <strong>+ Nieuw &gt; Google Documenten</strong> en plak het verslag met <strong>Ctrl+V</strong>. <em>(Zo heb je direct een echt Google Document zonder .MD-bestand!)</em></li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-xs font-semibold text-slate-700">Voorbeeld van wat nu op je klembord staat:</span>
+                                <button type="button" id="btnCopyAgainInline" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Opnieuw kopiëren</button>
+                            </div>
+                            <pre id="generatedPromptPreview" class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-sans max-h-[340px] overflow-y-auto"></pre>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: Snelle Actiepunten (tijdens de vergadering zelf bijhouden) -->
+                    <div id="view-tasks" class="hidden space-y-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">Zelf alvast actiepunten noteren</h3>
+                            <p class="text-xs text-slate-500">Handig om tijdens de vergadering direct losse taken vast te leggen.</p>
+                        </div>
+
+                        <div class="flex space-x-2">
+                            <input type="text" id="newTaskInput" placeholder="Nieuwe taak toevoegen (bijv. Sander mailt uitgeverij)..." class="flex-1 text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                            <button type="button" id="btnAddTask" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+                                <i class="fa-solid fa-plus mr-1"></i> Toevoegen
+                            </button>
+                        </div>
+
+                        <ul id="tasksList" class="space-y-2.5 pt-1">
+                            <!-- Dynamische taken -->
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- GLOBALE VARIABELEN ---
+        // Vaste URL van jullie TOF Notulist-Gem (gebruik /gem/... zodat collega's direct kunnen chatten i.p.v. bewerken)
+        const STANDAARD_GEM_URL = 'https://gemini.google.com/gem/9f2bd71abf50';
+        let customGemUrl = '';
+        let isRecording = false;
+        let recognition = null;
+        let finalTranscript = '';
+        let latestPromptText = '';
+        let manualTasks = [];
+        let speakers = ['Persoon 1', 'Persoon 2', 'Persoon 3', 'Persoon 4'];
+        let activeSpeaker = null;
+
+        // Variabelen voor automatische stemherkenning (Web Audio API pitch-detectie)
+        let audioContext = null;
+        let analyserNode = null;
+        let micStream = null;
+        let pitchInterval = null;
+        let currentSegmentPitches = [];
+        let voiceProfiles = []; // [{ label: 'Persoon 1', avgPitch: 135 }, ...]
+        let lastSpeechTimestamp = 0;
+
+        // --- INITIALISATIE BIJ LADEN PAGINA ---
+        function bindEvents() {
+            const on = (id, event, fn) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener(event, fn);
+            };
+            on('btnGemConfig', 'click', openGemModal);
+            on('btnCloseGemX', 'click', closeGemModal);
+            on('btnCancelGem', 'click', closeGemModal);
+            on('btnSaveGem', 'click', saveGemUrl);
+            on('btnHelp', 'click', openHelpModal);
+            on('btnCloseHelpX', 'click', closeHelpModal);
+            on('btnCloseHelpOk', 'click', closeHelpModal);
+            on('btnSample', 'click', loadSampleText);
+            on('btnClear', 'click', clearAll);
+            on('btnRefreshMic', 'click', () => loadAudioDevices(true));
+            on('recordBtn', 'click', toggleRecording);
+            on('btnToggleSpeakerEdit', 'click', toggleSpeakerEdit);
+            on('btnSaveSpeakers', 'click', saveSpeakers);
+            on('rawTranscript', 'input', updateWordCount);
+            on('generateBtn', 'click', () => prepareGeminiPrompt(true));
+            on('copyOnlyPromptBtn', 'click', () => prepareGeminiPrompt(false));
+            on('tab-prompt', 'click', () => switchTab('prompt'));
+            on('tab-tasks', 'click', () => switchTab('tasks'));
+            on('copyBtn', 'click', copyPromptAgain);
+            on('btnCopyAgainInline', 'click', copyPromptAgain);
+            on('btnAddTask', 'click', addManualTask);
+            on('newTaskInput', 'keypress', (e) => {
+                if (e.key === 'Enter') addManualTask();
+            });
+        }
+
+        function initApp() {
+            try { initGemSettings(); } catch (e) { console.error(e); }
+            try { bindEvents(); } catch (e) { console.error(e); }
+            try { renderSpeakerButtons(); } catch (e) { console.error(e); }
+            try { initSpeechRecognition(); } catch (e) { console.error(e); }
+            try { loadAudioDevices(false); } catch (e) { console.error(e); }
+            try { updateWordCount(); } catch (e) { console.error(e); }
+        }
+
+        function initGemSettings() {
+            let saved = '';
+            try { saved = localStorage.getItem('tof_notulist_gem_url') || ''; } catch (e) {}
+            customGemUrl = saved || STANDAARD_GEM_URL;
+            updateGemBadge();
+        }
+
+        function updateGemBadge() {
+            const badge = document.getElementById('gemBadgeText');
+            const link = document.getElementById('openGeminiLink');
+            if (customGemUrl) {
+                if (badge) badge.textContent = 'TOF Gem Actief';
+                if (link) {
+                    link.href = customGemUrl;
+                    const span = link.querySelector('span');
+                    if (span) span.textContent = 'Open TOF Gem';
+                }
+            } else {
+                if (badge) badge.textContent = 'Gem Koppelen';
+                if (link) {
+                    link.href = 'https://gemini.google.com/app';
+                    const span = link.querySelector('span');
+                    if (span) span.textContent = 'Open Gemini';
+                }
+            }
+        }
+
+        function openGemModal() {
+            document.getElementById('gemUrlInput').value = customGemUrl;
+            document.getElementById('gemModal').classList.remove('hidden');
+        }
+
+        function closeGemModal() {
+            document.getElementById('gemModal').classList.add('hidden');
+        }
+
+        function saveGemUrl() {
+            const val = document.getElementById('gemUrlInput').value.trim();
+            customGemUrl = val;
+            try {
+                if (val) localStorage.setItem('tof_notulist_gem_url', val);
+                else localStorage.removeItem('tof_notulist_gem_url');
+            } catch (e) {}
+            updateGemBadge();
+            closeGemModal();
+            showToast(val ? 'Jullie TOF Notulist-Gem is gekoppeld!' : 'Standaard Gemini hersteld.', 'success');
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+
+        // --- SPREKERS BEHEREN ---
+        function renderSpeakerButtons() {
+            const container = document.getElementById('speakerButtonsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            speakers.forEach(name => {
+                const isSelected = activeSpeaker === name;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'text-xs font-medium px-2.5 py-1.5 rounded-lg border transition flex items-center ' +
+                    (isSelected
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                        : 'bg-white hover:bg-indigo-50 text-slate-700 border-slate-200');
+                btn.innerHTML = '<i class="fa-solid fa-user-tag mr-1.5 ' + (isSelected ? 'text-indigo-200' : 'text-indigo-500') + '"></i>' + escapeHtml(name);
+                btn.addEventListener('click', () => selectSpeaker(name));
+                container.appendChild(btn);
+            });
+        }
+
+        function toggleSpeakerEdit() {
+            const box = document.getElementById('speakerEditBox');
+            const input = document.getElementById('speakerNamesInput');
+            box.classList.toggle('hidden');
+            if (!box.classList.contains('hidden')) {
+                input.value = speakers.join(', ');
+                input.focus();
+            }
+        }
+
+        function saveSpeakers() {
+            const input = document.getElementById('speakerNamesInput').value;
+            const parsed = input.split(',').map(s => s.trim()).filter(Boolean);
+            speakers = parsed.length > 0 ? parsed : ['Persoon 1', 'Persoon 2'];
+            if (activeSpeaker && !speakers.includes(activeSpeaker)) {
+                activeSpeaker = null;
+            }
+            renderSpeakerButtons();
+            document.getElementById('speakerEditBox').classList.add('hidden');
+            showToast('Deelnemers bijgewerkt!', 'success');
+        }
+
+        function selectSpeaker(name) {
+            activeSpeaker = name;
+            renderSpeakerButtons();
+            const textarea = document.getElementById('rawTranscript');
+            const current = textarea.value;
+            const prefix = current.trim().length > 0 ? '\n\n' : '';
+            textarea.value = current + prefix + name + ': ';
+            finalTranscript = textarea.value;
+            textarea.focus();
+            textarea.scrollTop = textarea.scrollHeight;
+            updateWordCount();
+        }
+
+        // --- MICROFOON SELECTIE & SPRAAKHERKENNING ---
+        async function loadAudioDevices(requestPermission = false) {
+            const select = document.getElementById('micSelect');
+            if (!select || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+
+            try {
+                if (requestPermission) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                select.innerHTML = '';
+
+                if (audioInputs.length === 0) {
+                    select.innerHTML = '<option value="default">Standaard systeemmicrofoon</option>';
+                    return;
+                }
+
+                audioInputs.forEach((device, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = device.deviceId;
+                    opt.textContent = device.label || ('Microfoon ' + (idx + 1));
+                    select.appendChild(opt);
+                });
+
+                if (requestPermission) {
+                    showToast('Microfoonlijst vernieuwd!', 'success');
+                }
+            } catch (err) {
+                console.warn('Microfoonlijst kon niet volledig worden geladen:', err);
+            }
+        }
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                const statusEl = document.getElementById('recordingStatus');
+                if (statusEl) statusEl.textContent = 'Spraakherkenning niet ondersteund in deze browser (gebruik Chrome/Edge)';
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'nl-NL';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                const textarea = document.getElementById('rawTranscript');
+                let baseText = textarea.value;
+                const autoEnabled = document.getElementById('autoSpeakerToggle')?.checked;
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcriptPiece = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        // Automatische spreker-toekenning bij spreekpauze (> 1,1 sec) of start van gesprek
+                        if (autoEnabled && currentSegmentPitches.length > 0) {
+                            const now = Date.now();
+                            const pauseDuration = now - lastSpeechTimestamp;
+                            if (!activeSpeaker || pauseDuration > 1100) {
+                                const detectedLabel = classifySpeakerByVoice(currentSegmentPitches);
+                                if (detectedLabel && detectedLabel !== activeSpeaker) {
+                                    activeSpeaker = detectedLabel;
+                                    renderSpeakerButtons();
+                                    const prefix = baseText.trim().length > 0 ? '\n\n' : '';
+                                    baseText += prefix + activeSpeaker + ': ';
+                                }
+                            }
+                            lastSpeechTimestamp = now;
+                            currentSegmentPitches = [];
+                        } else if (!activeSpeaker && baseText.trim().length === 0) {
+                            // Zorg dat het eerste blok altijd met Persoon 1 (of eerste naam) begint
+                            activeSpeaker = speakers[0] || 'Persoon 1';
+                            renderSpeakerButtons();
+                            baseText += activeSpeaker + ': ';
+                        }
+
+                        const needsSpace = baseText.length > 0 && !baseText.endsWith(' ') && !baseText.endsWith('\n');
+                        baseText += (needsSpace ? ' ' : '') + transcriptPiece.trim();
+                        textarea.value = baseText;
+                        finalTranscript = baseText;
+                        textarea.scrollTop = textarea.scrollHeight;
+                        updateWordCount();
+                    } else {
+                        interim += transcriptPiece;
+                    }
+                }
+
+                const interimBox = document.getElementById('interimBox');
+                const interimText = document.getElementById('interimText');
+                if (interim.trim()) {
+                    interimText.textContent = interim;
+                    interimBox.classList.remove('hidden');
+                } else {
+                    interimBox.classList.add('hidden');
+                }
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error === 'no-speech') return;
+                if (event.error === 'not-allowed') {
+                    showToast('Microfoontoegang geweigerd door browser of Google Sites.', 'error');
+                    stopRecording();
+                }
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        stopRecording();
+                    }
+                }
+            };
+        }
+
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            if (!recognition) {
+                showToast('Gebruik Google Chrome of Microsoft Edge voor live spraakopname.', 'error');
+                return;
+            }
+            try {
+                isRecording = true;
+                recognition.start();
+                startVoiceAnalyzer();
+                document.getElementById('recordBtn').classList.replace('bg-red-600', 'bg-slate-800');
+                document.getElementById('recordBtn').classList.replace('hover:bg-red-700', 'hover:bg-slate-900');
+                document.getElementById('recordIcon').className = 'fa-solid fa-stop';
+                document.getElementById('recordBtnText').textContent = 'Stop Opname';
+                document.getElementById('recordingPulse').classList.remove('hidden');
+                document.getElementById('recordingStatus').textContent = 'Aan het luisteren (auto-stem actief)...';
+                loadAudioDevices(false);
+            } catch (err) {
+                isRecording = false;
+                showToast('Kon opname niet starten: ' + err.message, 'error');
+            }
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            stopVoiceAnalyzer();
+            if (recognition) {
+                try {
+                    recognition.stop();
+                } catch (e) {}
+            }
+            document.getElementById('recordBtn').classList.replace('bg-slate-800', 'bg-red-600');
+            document.getElementById('recordBtn').classList.replace('hover:bg-slate-900', 'hover:bg-red-700');
+            document.getElementById('recordIcon').className = 'fa-solid fa-microphone';
+            document.getElementById('recordBtnText').textContent = 'Start Opname';
+            document.getElementById('recordingPulse').classList.add('hidden');
+            document.getElementById('recordingStatus').textContent = 'Opname gepauzeerd';
+            document.getElementById('interimBox').classList.add('hidden');
+        }
+
+        // --- AUTOMATISCHE STEMHOOGTE-ANALYSE (PERSOON 1, 2, 3...) ---
+        async function startVoiceAnalyzer() {
+            try {
+                const selectedDeviceId = document.getElementById('micSelect')?.value;
+                const constraints = {
+                    audio: selectedDeviceId && selectedDeviceId !== 'default'
+                        ? { deviceId: { exact: selectedDeviceId } }
+                        : true
+                };
+                micStream = await navigator.mediaDevices.getUserMedia(constraints);
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(micStream);
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 2048;
+                source.connect(analyserNode);
+
+                const buffer = new Float32Array(analyserNode.fftSize);
+                pitchInterval = setInterval(() => {
+                    if (!analyserNode || !isRecording) return;
+                    analyserNode.getFloatTimeDomainData(buffer);
+                    const pitch = detectFundamentalPitch(buffer, audioContext.sampleRate);
+                    // Menselijke spraak ligt doorgaans tussen 75 Hz (lage mannenstem) en 310 Hz (hoge vrouwenstem)
+                    if (pitch >= 75 && pitch <= 310) {
+                        currentSegmentPitches.push(pitch);
+                        if (currentSegmentPitches.length > 40) currentSegmentPitches.shift();
+                    }
+                }, 90);
+            } catch (err) {
+                console.warn('Stemhoogte-analyse niet gestart:', err);
+            }
+        }
+
+        function stopVoiceAnalyzer() {
+            if (pitchInterval) {
+                clearInterval(pitchInterval);
+                pitchInterval = null;
+            }
+            if (micStream) {
+                micStream.getTracks().forEach(t => t.stop());
+                micStream = null;
+            }
+            if (audioContext) {
+                audioContext.close().catch(() => {});
+                audioContext = null;
+            }
+            analyserNode = null;
+        }
+
+        function detectFundamentalPitch(buf, sampleRate) {
+            // Bereken geluidsniveau (RMS) om stilte / achtergrondruis te negeren
+            let rms = 0;
+            for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+            rms = Math.sqrt(rms / buf.length);
+            if (rms < 0.015) return -1;
+
+            // Autocorrelatie voor grondfrequentie (Hz)
+            let bestOffset = -1;
+            let bestCorrelation = 0;
+            const minSamples = Math.floor(sampleRate / 320);
+            const maxSamples = Math.floor(sampleRate / 70);
+
+            for (let offset = minSamples; offset <= maxSamples; offset++) {
+                let correlation = 0;
+                for (let i = 0; i < buf.length - offset; i++) {
+                    correlation += buf[i] * buf[i + offset];
+                }
+                if (correlation > bestCorrelation) {
+                    bestCorrelation = correlation;
+                    bestOffset = offset;
+                }
+            }
+            return bestOffset > 0 ? sampleRate / bestOffset : -1;
+        }
+
+        function classifySpeakerByVoice(pitches) {
+            if (!pitches || pitches.length === 0) return activeSpeaker || speakers[0] || 'Persoon 1';
+            // Gebruik de mediaan van de gemeten toonhoogtes om uitschieters te filteren
+            const sorted = [...pitches].sort((a, b) => a - b);
+            const medianPitch = sorted[Math.floor(sorted.length / 2)];
+
+            // Zoek bestaande stem binnen een bandbreedte van ±24 Hz
+            let closestProfile = null;
+            let smallestDiff = Infinity;
+            for (const profile of voiceProfiles) {
+                const diff = Math.abs(profile.avgPitch - medianPitch);
+                if (diff < smallestDiff) {
+                    smallestDiff = diff;
+                    closestProfile = profile;
+                }
+            }
+
+            if (closestProfile && smallestDiff <= 24) {
+                // Werk het stemprofiel licht bij (voortschrijdend gemiddelde)
+                closestProfile.avgPitch = (closestProfile.avgPitch * 0.75) + (medianPitch * 0.25);
+                return closestProfile.label;
+            }
+
+            // Nieuwe spreker aanmaken: gebruik ingevulde naam of automatisch "Persoon 1", "Persoon 2", ...
+            const nextIndex = voiceProfiles.length;
+            const newLabel = speakers[nextIndex] || ('Persoon ' + (nextIndex + 1));
+            if (!speakers.includes(newLabel)) {
+                speakers.push(newLabel);
+            }
+            voiceProfiles.push({ label: newLabel, avgPitch: medianPitch });
+            return newLabel;
+        }
+
+        // --- GEMINI OPDRACHT SAMENSTELLEN & KOPIËREN ---
+        function buildGeminiPrompt(rawText) {
+            const participantsContext = speakers.length > 0 ? speakers.join(', ') : 'Onbekend';
+            const today = new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            let extraTasksNote = '';
+            if (manualTasks.length > 0) {
+                const taskLines = manualTasks.map(t => '- ' + t.task).join('\n');
+                extraTasksNote = '\nAanvullende actiepunten die tijdens het overleg zijn genoteerd:\n' + taskLines + '\n';
+            }
+
+            if (customGemUrl) {
+                return 'Datum overleg: ' + today + '\n' +
+                    'Deelnemers: ' + participantsContext + '\n' +
+                    extraTasksNote + '\n' +
+                    '--- TRANSCRIPTIE ---\n' + rawText;
+            }
+
+            return 'Je bent een professionele, nauwkeurige Nederlandse vergadernotulist binnen het onderwijs.\n' +
+                'Zet onderstaande ruwe vergadertranscriptie om in een helder, professioneel vergaderverslag.\n\n' +
+                'Datum overleg: ' + today + '\n' +
+                'Bekende deelnemers aan tafel: ' + participantsContext + '\n' +
+                extraTasksNote + '\n' +
+                'Maak het verslag op volgens deze vaste structuur:\n' +
+                '1. **Titel & Deelnemers** (korte zakelijke titel en de aanwezige sprekers).\n' +
+                '2. **Samenvatting & Besluiten** (overzichtelijke opsomming per besproken onderwerp, waarbij duidelijk staat wie welk punt inbracht en wat er is besloten).\n' +
+                '3. **Taken- en Actiepuntenlijst** (concreet overzicht met per actiepunt de verantwoordelijke persoon tussen haakjes, bijv. [ ] Actiepunt (Naam)).\n' +
+                '4. **Opgeschoond Verslag** (de gesproken tekst voorzien van juiste hoofdletters, leestekens, alinea\'s en vetgedrukte sprekersnamen, zonder inhoudelijke uitspraken te veranderen).\n\n' +
+                '--- RUWE TRANSCRIPTIE ---\n' + rawText;
+        }
+
+        function prepareGeminiPrompt(openGeminiWindow = true) {
+            const rawText = document.getElementById('rawTranscript').value.trim();
+            
+            if (!rawText) {
+                showToast('Spreek eerst iets in of klik op "Test-tekst" voordat je de opdracht maakt.', 'error');
+                return;
+            }
+
+            if (isRecording) {
+                stopRecording();
+            }
+
+            latestPromptText = buildGeminiPrompt(rawText);
+            document.getElementById('generatedPromptPreview').textContent = latestPromptText;
+            document.getElementById('emptyState').classList.add('hidden');
+            switchTab('prompt');
+
+            copyTextToClipboard(latestPromptText);
+
+            const targetUrl = customGemUrl || 'https://gemini.google.com/app';
+            if (openGeminiWindow) {
+                showToast('Gekopieerd! Plak nu in jullie schone Gem-venster met Ctrl+V.', 'success');
+                window.open(targetUrl, 'tof_gem_' + Date.now(), 'noopener,noreferrer');
+            } else {
+                showToast('Gekopieerd naar klembord!', 'success');
+            }
+        }
+
+        function copyPromptAgain() {
+            if (!latestPromptText) {
+                prepareGeminiPrompt(false);
+                return;
+            }
+            copyTextToClipboard(latestPromptText);
+            showToast('Tekst opnieuw gekopieerd naar klembord!', 'success');
+        }
+
+        function copyTextToClipboard(text) {
+            const tempArea = document.createElement('textarea');
+            tempArea.value = text;
+            document.body.appendChild(tempArea);
+            tempArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Kopiëren mislukt:', err);
+            }
+            document.body.removeChild(tempArea);
+        }
+
+        // --- HANDMATIGE TAKENLIJST TIJDENS VERGADERING ---
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            const taskBadge = document.getElementById('taskBadge');
+            tasksList.innerHTML = '';
+
+            if (manualTasks.length > 0) {
+                taskBadge.textContent = manualTasks.length;
+                taskBadge.classList.remove('hidden');
+            } else {
+                taskBadge.classList.add('hidden');
+            }
+
+            manualTasks.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-start justify-between p-3.5 rounded-xl border transition ' + (item.completed ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-white border-slate-200 shadow-2xs');
+                
+                li.innerHTML =
+                    '<label class="flex items-start space-x-3 cursor-pointer flex-1">' +
+                        '<input type="checkbox" ' + (item.completed ? 'checked' : '') + ' data-index="' + index + '" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">' +
+                        '<span class="text-sm font-medium ' + (item.completed ? 'line-through text-slate-400' : 'text-slate-800') + '">' + escapeHtml(item.task) + '</span>' +
+                    '</label>' +
+                    '<button type="button" data-index="' + index + '" class="task-delete text-slate-400 hover:text-red-500 p-1 transition ml-2" title="Verwijder taak">' +
+                        '<i class="fa-solid fa-xmark"></i>' +
+                    '</button>';
+                tasksList.appendChild(li);
+            });
+
+            tasksList.querySelectorAll('.task-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => toggleTask(Number(e.target.dataset.index)));
+            });
+            tasksList.querySelectorAll('.task-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => deleteTask(Number(e.currentTarget.dataset.index)));
+            });
+        }
+
+        function toggleTask(index) {
+            if (!manualTasks[index]) return;
+            manualTasks[index].completed = !manualTasks[index].completed;
+            renderTasks();
+        }
+
+        function deleteTask(index) {
+            manualTasks.splice(index, 1);
+            renderTasks();
+        }
+
+        function addManualTask() {
+            const input = document.getElementById('newTaskInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            manualTasks.push({ task: text, completed: false });
+            input.value = '';
+            renderTasks();
+            showToast('Actiepunt toegevoegd!', 'success');
+        }
+
+        // --- TABBLADEN & HULPFUNCTIES ---
+        function switchTab(tabName) {
+            ['prompt', 'tasks'].forEach(t => {
+                document.getElementById('view-' + t).classList.add('hidden');
+                const btn = document.getElementById('tab-' + t);
+                btn.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-white', 'font-semibold');
+                btn.classList.add('border-transparent', 'text-slate-500', 'font-medium');
+            });
+
+            if (tabName === 'tasks') {
+                document.getElementById('emptyState').classList.add('hidden');
+                document.getElementById('view-tasks').classList.remove('hidden');
+            } else if (tabName === 'prompt') {
+                if (latestPromptText) {
+                    document.getElementById('emptyState').classList.add('hidden');
+                    document.getElementById('view-prompt').classList.remove('hidden');
+                } else {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                }
+            }
+
+            const activeBtn = document.getElementById('tab-' + tabName);
+            activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'bg-white', 'font-semibold');
+            activeBtn.classList.remove('border-transparent', 'text-slate-500', 'font-medium');
+        }
+
+        function updateWordCount() {
+            const textarea = document.getElementById('rawTranscript');
+            const countEl = document.getElementById('wordCount');
+            if (!textarea || !countEl) return;
+            const text = textarea.value.trim();
+            const count = text ? text.split(/\s+/).length : 0;
+            countEl.textContent = count + ' ' + (count === 1 ? 'woord' : 'woorden');
+        }
+
+        function loadSampleText() {
+            const sample = 'Mark: Nou, goedemiddag allemaal. Fijn dat we zo na schooltijd nog even bij elkaar kunnen zitten. Ehm, even kijken, we hebben een half uurtje ingepland voor de invoering van de nieuwe rekenmethode, RekenRijk. Sander, jij zit in de werkgroep, wil jij even aftrappen?\n\n' +
+                'Sander: Ja, natuurlijk. Ehm, nou ja, zoals jullie weten hebben we voor de herfstvakantie de knoop doorgehakt. De materialen zijn inmiddels grotendeels binnen, behalve... eh, even kijken, de werkboeken voor groep 5 en 6 staan nog in nalevering. Maar goed, we willen natuurlijk na de kerstvakantie echt van start gaan in alle groepen.\n\n' +
+                'Fatima: Wacht even, direct na de kerstvakantie al? Maar... ehm, hebben we dan al wel een training gehad? Want ik heb gisteren even door die handleiding van groep 3 zitten bladeren, en dat werkt echt heel anders met die digitale leeromgeving dan we gewend zijn. Ik vind dat best spannend zo midden in het schooljaar.\n\n' +
+                'Jolanda: Ja, daar sluit ik me eigenlijk wel bij aan, Fatima. Kijk, vanuit zorg en ondersteuning zie ik ook dat de toetsmomenten en de, eh, de manier van differentiëren helemaal op de schop gaan. Als leerkrachten dat niet goed in de vingers hebben voordat ze beginnen, dan raken we straks het overzicht kwijt bij de zwakkere rekenaars.\n\n' +
+                'Mark: Hmm, goed punt. Wat is het alternatief dan? Pas aan het begin van het nieuwe schooljaar starten? Want we hebben natuurlijk al wel geïnvesteerd in die licenties voor dit jaar.\n\n' +
+                'Sander: Nou, we hoeven het niet per se uit te stellen tot augustus, hoor. In de werkgroep hebben we het erover gehad om in januari en februari eerst een soort, ja, wenperiode te doen. Dus dat we de methode wel gebruiken, maar dat we nog even geen methodegebonden toetsen afnemen. En dat we dan op de studiedag van 15 januari een trainer van de uitgeverij laten komen.\n\n' +
+                'Fatima: Oh, kijk, dat klinkt al een stuk haalbaarder. Als ik weet dat ik in januari nog gewoon even mag uitproberen zonder dat het meteen telt voor het leerlingvolgsysteem, geeft dat wel rust. Maar dan moet die studiedag op 15 januari wel echt praktisch zijn, hè? Geen lang verhaal over de visie, maar gewoon: hoe zet ik mijn digibordles klaar en hoe werkt het nakijken.\n\n' +
+                'Mark: Helemaal eens. Sander, kun jij dat zo kortsluiten met die trainer van de uitgeverij? Dat het echt een hands-on workshop wordt?\n\n' +
+                'Sander: Ja, ik mail haar morgenochtend meteen. En ik check dan ook gelijk even wanneer die nalevering voor groep 5 en 6 precies komt.\n\n' +
+                'Jolanda: Top. En dan stel ik voor dat ik in de week van 25 januari, dus vlak na die studiedag, even bij iedereen kort binnenloop tijdens de rekenles. Gewoon om te kijken waar jullie tegenaan lopen met de verschillende niveaus. Dan kan ik daarna een kort overzichtje maken voor het team.\n\n' +
+                'Mark: Mooi plan. Dus even samenvattend: we starten na de kerstvakantie met een wenperiode zonder methodegebonden toetsen, op 15 januari is de praktische training tijdens de studiedag, en eind januari doet Jolanda een rondje door de klassen. Iedereen akkoord daarmee?\n\n' +
+                'Fatima: Ja, helemaal prima zo.\n\n' +
+                'Sander: Yes, akkoord.\n\n' +
+                'Jolanda: Ja, top.';
+            
+            speakers = ['Mark', 'Sander', 'Fatima', 'Jolanda'];
+            document.getElementById('speakerNamesInput').value = speakers.join(', ');
+            renderSpeakerButtons();
+
+            document.getElementById('rawTranscript').value = sample;
+            finalTranscript = sample;
+            updateWordCount();
+            showToast('Test-gesprek (RekenRijk) geladen! Klik nu op "Kopieer voor Gemini & Open".', 'info');
+        }
+
+        function clearAll() {
+            if (isRecording) stopRecording();
+            document.getElementById('rawTranscript').value = '';
+            finalTranscript = '';
+            latestPromptText = '';
+            manualTasks = [];
+            activeSpeaker = null;
+            voiceProfiles = [];
+            currentSegmentPitches = [];
+            lastSpeechTimestamp = 0;
+            renderSpeakerButtons();
+            renderTasks();
+            updateWordCount();
+            
+            document.getElementById('view-prompt').classList.add('hidden');
+            document.getElementById('view-tasks').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+            switchTab('prompt');
+            showToast('Alles is gewist.', 'info');
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toastMessage');
+            const iconEl = document.getElementById('toastIcon');
+
+            msgEl.textContent = message;
+            iconEl.className = 'fa-solid ';
+            if (type === 'success') iconEl.className += 'fa-circle-check text-emerald-400';
+            else if (type === 'error') iconEl.className += 'fa-circle-exclamation text-red-400';
+            else iconEl.className += 'fa-circle-info text-indigo-400';
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
+        }
+
+        function openHelpModal() {
+            document.getElementById('helpModal').classList.remove('hidden');
+        }
+
+        function closeHelpModal() {
+            document.getElementById('helpModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
